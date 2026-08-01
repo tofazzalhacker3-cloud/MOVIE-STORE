@@ -390,11 +390,15 @@ body {
 /* modal */
 .modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(7,7,13,.78); backdrop-filter: blur(10px); }
 .modal.hidden, .toast.hidden { display: none; }
-.modal-box { position: relative; width: 100%; max-width: 620px; max-height: 82vh; overflow-y: auto; background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 28px; box-shadow: 0 30px 80px rgba(0,0,0,.7); }
-.modal-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; background: var(--card); border: 1px solid var(--border); color: var(--muted); cursor: pointer; }
-.modal-close:hover { color: #fff; background: rgba(236,72,153,.3); }
+.modal-box { position: relative; width: 100%; max-width: 620px; max-height: 82vh; display: flex; flex-direction: column; background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 30px 80px rgba(0,0,0,.7); overflow: hidden; }
+.modal-close { position: absolute; top: 20px; right: 20px; z-index: 10; width: 34px; height: 34px; border-radius: 50%; background: var(--card); border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: .2s; }
+.modal-close:hover { color: #fff; background: rgba(236,72,153,.3); border-color: rgba(236,72,153,.5); }
 .modal h3 { font-family: 'Outfit', sans-serif; font-size: 1.3rem; margin-bottom: 4px; }
-.modal-sub { color: var(--muted); font-size: .85rem; margin-bottom: 20px; }
+.modal-sub { color: var(--muted); font-size: .85rem; margin-bottom: 0; }
+
+#modalContent { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.modal-head-sticky { flex-shrink: 0; padding-right: 38px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.modal-body-scroll { flex: 1; overflow-y: auto; min-height: 0; padding-right: 4px; }
 
 /* download list */
 .dl-item { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 14px 16px; margin-bottom: 10px; transition: .2s; }
