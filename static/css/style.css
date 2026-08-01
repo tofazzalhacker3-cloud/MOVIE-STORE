@@ -402,6 +402,7 @@ body {
 
 /* download list */
 .dl-item { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 14px 16px; margin-bottom: 10px; transition: .2s; }
+.dl-season { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .82rem; letter-spacing: .6px; text-transform: uppercase; color: var(--grad2); margin: 6px 0 10px; }
 .dl-item:hover { background: var(--card-hover); }
 .dl-icon { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; font-size: 1.05rem; background: linear-gradient(135deg, rgba(124,58,237,.35), rgba(236,72,153,.35)); color: #fff; flex-shrink: 0; }
 .dl-mid { flex: 1; min-width: 0; }
