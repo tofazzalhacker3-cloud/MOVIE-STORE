@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Details{% endblock %}
+{% block content %}
+<div id="detailRoot"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const SID = {{ subject_id | tojson }};
+let CURRENT_SID = SID;
+let DETAIL = null;
+
+async function openDownload(subjectId, se, ep) {
+  try {
+    openModal('<div class="modal-head-sticky"><h3><i class="fa-solid fa-cloud-arrow-down" style="color:var(--grad2)"></i> Download</h3><div class="modal-sub">Fetching available qualities...</div></div><div class="modal-body-scroll" style="text-align:center;padding:20px"><i class="fa-solid fa-spinner fa-spin" style="font-size:2rem;color:var(--grad1)"></i></div>');
+    const isTv = DETAIL && DETAIL.type === 2;
+    const d = isTv
+      ? await api(`/resources-all/${subjectId}`)
+      : await api(`/resource/${subjectId}?all=0`);
+    const list = (d.resources || []).filter(x => x.resourceLink);
+    if (!list.length) {
+      document.getElementById("modalContent").innerHTML = '<div class="modal-head-sticky"><h3>Download</h3></div><div class="modal-body-scroll"><div class="empty"><i class="fa-solid fa-cloud-arrow-down"></i><br>No downloadable resources</div></div>';
+      return;
+    }
+    const titleClean = DETAIL ? (DETAIL.title || "video").replace(/[^a-zA-Z0-9_ .\-]/g, "") : "video";
+    let rows;
+    if (isTv) {
+      const bySeason = {};
+      for (const r of list) (bySeason[r.se] = bySeason[r.se] || []).push(r);
+      rows = Object.keys(bySeason).sort((a, b) => a - b).map(se => {
+        const eps = bySeason[se].sort((a, b) => a.ep - b.ep).map(r => {
+          const res = r.resolution || "?";
+          return `<div class="dl-item">
+            <div class="dl-icon"><i class="fa-solid fa-file-video"></i></div>
+            <div class="dl-mid">
+              <div class="dl-title">S${r.se}E${r.ep} | ${res}P</div>
+              <div class="dl-sub">${res}P &bull; ${fmtBytes(r.size)} &bull; ${r.codecName || 'video'}</div>
+            </div>
+            <div class="dl-btns">
+              <button class="icon-btn" title="Copy link" onclick="copyLink('${r.resourceLink}')"><i class="fa-solid fa-link"></i></button>
+              <button class="icon-btn" title="Download" onclick="downloadFile('${r.resourceLink}', '${(titleClean + " S" + r.se + "E" + r.ep + " " + res + "P.mp4").replace(/'/g, "\\'")}')"><i class="fa-solid fa-download"></i></button>
+            </div>
+          </div>`;
+        }).join("");
+        return `<div class="dl-season"><i class="fa-solid fa-layer-group"></i> Season ${se}</div>${eps}`;
+      }).join("");
+    } else {
+      rows = list.sort((a, b) => (parseInt(a.resolution) || 0) - (parseInt(b.resolution) || 0)).map(r => {
+        const res = r.resolution || "?";
+        return `<div class="dl-item">
+          <div class="dl-icon"><i class="fa-solid fa-file-video"></i></div>
+          <div class="dl-mid">
+            <div class="dl-title">${res}P</div>
+            <div class="dl-sub">${res}P &bull; ${fmtBytes(r.size)} &bull; ${r.codecName || 'video'}</div>
+          </div>
+          <div class="dl-btns">
+            <button class="icon-btn" title="Copy link" onclick="copyLink('${r.resourceLink}')"><i class="fa-solid fa-link"></i></button>
+            <button class="icon-btn" title="Download" onclick="downloadFile('${r.resourceLink}', '${(titleClean + " " + res + "P.mp4").replace(/'/g, "\\'")}')"><i class="fa-solid fa-download"></i></button>
+          </div>
+        </div>`;
+      }).join("");
+    }
+    document.getElementById("modalContent").innerHTML =
+      '<div class="modal-head-sticky">' +
+        '<h3><i class="fa-solid fa-cloud-arrow-down" style="color:var(--grad2)"></i> Download</h3>' +
+        '<div class="modal-sub">' + list.length + ' file' + (list.length > 1 ? 's' : '') + ' — direct MP4</div>' +
+      '</div>' +
+      '<div class="modal-body-scroll">' + rows + '</div>';
+  } catch (e) {
+    document.getElementById("modalContent").innerHTML = '<div class="modal-head-sticky"><h3>Download</h3></div><div class="modal-body-scroll"><div class="empty"><i class="fa-solid fa-triangle-exclamation"></i><br>' + e.message + '</div></div>';
+  }
+}
+window.copyLink = async (u) => {
+  try { await navigator.clipboard.writeText(u); toast("Link copied!"); }
+  catch { prompt("Copy link:", u); }
+};
+window.downloadFile = (u, name) => {
+  location.href = "/download?url=" + encodeURIComponent(u) + "&name=" + encodeURIComponent(name || "video.mp4");
+  toast("Download started via server...");
+};
+
+async function loadDetails() {
+  const root = document.getElementById("detailRoot");
+  root.innerHTML = `
+    <div class="detail-skel">
+      <div class="skel skel-poster"></div>
+      <div class="detail-skel-body">
+        <div class="skel skel-line" style="height:36px;width:70%"></div>
+        <div class="skel skel-line" style="height:18px;width:45%;margin-top:18px"></div>
+        <div class="skel skel-line" style="width:92%"></div>
+        <div class="skel skel-line" style="width:85%"></div>
+        <div class="skel skel-line" style="width:60%"></div>
+      </div>
+    </div>`;
+  try {
+    const d = await api(`/details/${SID}`);
+    DETAIL = d;
+    const isTv = d.type === 2;
+    const year = d.releaseDate ? d.releaseDate.slice(0, 4) : "";
+    let dubs = d.dubs || [];
+    try { dubs = (await api(`/dub-info/${SID}`)) || dubs; } catch (e) {}
+    dubs.sort((a, b) => ((b.original ? 1 : 0) - (a.original ? 1 : 0)) ||
+      (a.lanName || "").localeCompare(b.lanName || ""));
+    root.innerHTML = `
+      <div class="detail-hero">
+        <div class="detail-poster" style="background-image:url('${d.coverUrl || ""}')"></div>
+        <div class="detail-body">
+          <h1>${d.title || "Untitled"}</h1>
+          <div class="detail-meta">
+            ${d.imdbRating ? `<span class="chip"><i class="fa-solid fa-star"></i> ${d.imdbRating} / 10</span>` : ""}
+            ${year ? `<span class="chip"><i class="fa-solid fa-calendar"></i> ${year}</span>` : ""}
+            <span class="chip"><i class="fa-solid fa-clapperboard"></i> ${isTv ? "Series" : "Movie"}</span>
+            ${d.genre ? `<span class="chip"><i class="fa-solid fa-tags"></i> ${d.genre}</span>` : ""}
+            ${d.duration ? `<span class="chip"><i class="fa-solid fa-clock"></i> ${d.duration}</span>` : ""}
+            ${d.language ? `<span class="chip"><i class="fa-solid fa-language"></i> ${d.language}</span>` : ""}
+          </div>
+          <p class="detail-desc">${d.description || "No description available."}</p>
+          <div class="detail-actions">
+            <button class="btn btn-grad btn-lg btn-icon" onclick="goWatch()"><i class="fa-solid fa-play"></i> ${isTv ? "Watch" : "Watch Now"}</button>
+            <button class="btn btn-ghost btn-lg btn-icon" onclick="openDownload(CURRENT_SID, 1, 1)"><i class="fa-solid fa-cloud-arrow-down"></i> Download</button>
+            ${dubs && dubs.length ? `
+              <select class="dub-select" id="dubSel" onchange="switchDub(this.value)">
+                ${dubs.map(x => `<option value="${x.subjectId}" ${x.subjectId === CURRENT_SID ? "selected" : ""}>${dubName(x)}</option>`).join("")}
+              </select>` : ""}
+          </div>
+          <div id="seasonArea"></div>
+        </div>
+      </div>`;
+    if (isTv) loadSeasons();
+  } catch (e) {
+    root.innerHTML = '<div class="empty"><i class="fa-solid fa-triangle-exclamation"></i><br>' + e.message + '</div>';
+  }
+}
+
+window.switchDub = (sid) => {
+  CURRENT_SID = sid;
+  const d = DETAIL;
+  if (d.type === 2) loadSeasons();
+  const dub = (d.dubs || []).find(x => x.subjectId === sid);
+  toast("Dub switched: " + (dub ? dubName(dub) : ""));
+};
+
+async function loadSeasons() {
+  const area = document.getElementById("seasonArea");
+  let data;
+  try { data = await api(`/seasons/${CURRENT_SID}`); }
+  catch { area.innerHTML = ""; return; }
+  const seasons = data.seasons || [];
+  if (!seasons.length) { area.innerHTML = ""; return; }
+  let tabs = '<div class="season-tabs">' + seasons.map((s, i) =>
+    `<button class="season-tab ${i === 0 ? "active" : ""}" onclick="pickSeason(this, ${s.se})">Season ${s.se}</button>`).join("") + "</div>";
+  area.innerHTML = tabs + '<div id="epGrid" class="ep-grid"></div>';
+  pickSeason(area.querySelector(".season-tab"), seasons[0].se);
+}
+
+window.pickSeason = async (btn, se) => {
+  document.querySelectorAll(".season-tab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const grid = document.getElementById("epGrid");
+  const data = await api(`/seasons/${CURRENT_SID}`);
+  const season = (data.seasons || []).find(s => s.se === se) || {};
+  const maxEp = season.maxEp || 0;
+  grid.innerHTML = Array.from({ length: maxEp }, (_, i) => i + 1).map(ep =>
+    `<button class="ep" onclick="goWatch(${se}, ${ep})">
+      <div class="ep-num">EPISODE ${String(ep).padStart(2, "0")}</div>
+      <div class="ep-title">Episode ${ep}</div>
+    </button>`).join("") || '<div class="empty">No episodes</div>';
+};
+
+window.goWatch = (se, ep) => {
+  const q = new URLSearchParams({ dub: CURRENT_SID });
+  if (se && ep) { q.set("se", se); q.set("ep", ep); }
+  location.href = `/watch/${SID}?${q.toString()}`;
+};
+
+loadDetails();
+document.getElementById("navSearchBtn").addEventListener("click", () => {
+  const q = document.getElementById("navSearch").value.trim();
+  if (q) location.href = "/search?q=" + encodeURIComponent(q);
+});
+document.getElementById("navSearch").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("navSearchBtn").click();
+});
+</script>
+{% endblock %}
